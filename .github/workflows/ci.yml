@@ -14,13 +14,38 @@ jobs:
         os: [ubuntu-latest, macos-latest]
     steps:
       - uses: actions/checkout@v4
-      - name: Install prerequisites
-        if: matrix.os == 'ubuntu-latest'
-        run: sudo apt-get update && sudo apt-get install -y cmake build-essential
-      - name: CMake (macOS)
-        if: matrix.os == 'macos-latest'
-        run: brew install cmake || true
-      - name: Configure
-        run: mkdir build && cd build && cmake ..
-      - name: Build
-        run: cmake --build build --config Release || true
+      - name: Setup dependencies (Linux)
+        if: ${{ matrix.os == 'ubuntu-latest' }}
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake build-essential clang
+      - name: Setup dependencies (macOS)
+        if: ${{ matrix.os == 'macos-latest' }}
+        run: |
+          brew install cmake || true
+          brew install llvm || true
+      - name: Detect build system
+        id: detect
+        run: |
+          if [ -f CMakeLists.txt ]; then echo "cmake=true" >> $GITHUB_OUTPUT; else echo "cmake=false" >> $GITHUB_OUTPUT; fi
+      - name: Configure & Build with CMake
+        if: ${{ steps.detect.outputs.cmake == 'true' }}
+        run: |
+          mkdir -p build
+          cd build
+          cmake .. -DCMAKE_BUILD_TYPE=Release
+          cmake --build . --config Release
+      - name: Build individual .cpp files with clang++
+        if: ${{ steps.detect.outputs.cmake == 'false' }}
+        run: |
+          set -e
+          mkdir -p build/bin
+          files=$(git ls-files '*.cpp')
+          if [ -z "$files" ]; then echo "No .cpp files found"; exit 0; fi
+          for f in $files; do
+            bn=$(basename "$f" .cpp)
+            echo "Compiling $f -> build/bin/$bn"
+            clang++ -std=c++17 -O2 "$f" -o build/bin/"$bn"
+          done
+      - name: List build artifacts
+        run: ls -la build || true
