@@ -8,3 +8,7 @@ build/
 
 # IDE
 .vscode/
+
+# Sensitive files
+token*.txt
+token*.key
