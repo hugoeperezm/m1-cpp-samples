@@ -1,0 +1,10 @@
+# Build and temp files
+build/
+*.o
+*.a
+*.so
+*.dSYM
+.DS_Store
+
+# IDE
+.vscode/
